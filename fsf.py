@@ -6,7 +6,7 @@ from hashlib import md5
 from random import randint
 from sys import path as syspath
 from pathlib import Path
-from typing import Iterable
+from typing import Generator, Iterable
 from contextlib import contextmanager
 from itertools import chain
 
@@ -48,7 +48,7 @@ def hash_from_path(path: Path | str) -> str:
         return hasher.hexdigest()
 
 
-def subfiles(directory: Path | str) -> Iterable[Path]:
+def subfiles(directory: Path | str) -> Generator[Path]:
     """
     Returns a list of paths of the files in the given directory.
     :param directory: The directory in which to search.
@@ -58,7 +58,7 @@ def subfiles(directory: Path | str) -> Iterable[Path]:
     return (Path(f'{direc}') / f.name for f in scandir(direc) if f.is_file())
 
 
-def subdirs(directory: Path | str) -> Iterable[Path]:
+def subdirs(directory: Path | str) -> Generator[Path]:
     """
     Returns a list of paths of the sub-folders to the given directory.
     :param directory: The string path of the folder from which to extract the paths of sub-folders from.
@@ -68,7 +68,7 @@ def subdirs(directory: Path | str) -> Iterable[Path]:
     return (Path(f'{direc}') / f.name for f in scandir(direc) if f.is_dir())
 
 
-def subpaths(directory: Path | str) -> Iterable[Path]:
+def subpaths(directory: Path | str) -> Generator[Path]:
     """
     Gets the resolved paths of every sub file in every sub folder into one list
     (all end points in the tree below the entry point given).
