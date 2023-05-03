@@ -1,13 +1,14 @@
 """
 Module contains functions useful for interacting with and manipulating file systems and structures.
 """
-from hashlib import md5
 from os import scandir, path as ospath, remove as osrmv, chdir, mkdir, getcwd
+from hashlib import md5
 from random import randint
 from sys import path as syspath
 from pathlib import Path
 from typing import Iterable
 from contextlib import contextmanager
+from itertools import chain
 
 
 @contextmanager
@@ -47,43 +48,47 @@ def hash_from_path(path: Path | str) -> str:
         return hasher.hexdigest()
 
 
-def subfiles(directory: Path | str) -> list[Path]:
+def subfiles(directory: Path | str) -> Iterable[Path]:
     """
     Returns a list of paths of the files in the given directory.
     :param directory: The directory in which to search.
     :return: The list of file paths in the given directory.
     """
     direc = path_handler(directory).resolve()
-    return [Path(f'{direc}') / f.name for f in scandir(direc) if f.is_file()]
+    return (Path(f'{direc}') / f.name for f in scandir(direc) if f.is_file())
 
 
-def subdirs(directory: Path | str) -> list[Path]:
+def subdirs(directory: Path | str) -> Iterable[Path]:
     """
     Returns a list of paths of the sub-folders to the given directory.
     :param directory: The string path of the folder from which to extract the paths of sub-folders from.
     :return: A list of sub folder paths.
     """
     direc = path_handler(directory).resolve()
-    return [Path(f'{direc}') / f.name for f in scandir(direc) if f.is_dir()]
+    return (Path(f'{direc}') / f.name for f in scandir(direc) if f.is_dir())
 
 
-def subpaths(directory: Path | str) -> list[Path]:
+def subpaths(directory: Path | str) -> Iterable[Path]:
     """
-    Use to get the paths of every sub file in every sub folder into one list
+    Gets the resolved paths of every sub file in every sub folder into one list
     (all end points in the tree below the entry point given).
-    :param directory: The directory to recursively unpack.
-    :return: A list of string paths of each sub file.
+    :param directory: The root directory to get the tree of.
+    :return: An iterable of string paths of each sub file.
     """
     direc = path_handler(directory)
-    sd = subdirs(direc)
     sf = subfiles(direc)
-    if sd:  # if list not empty.
-        for d in sd:
-            sf += subpaths(d)
+    for d in subdirs(direc):
+        sf = chain(sf, subpaths(d))
     return sf
 
 
 def get_duplicates(include: Path | Iterable[Path], exclude: Path | Iterable[Path] = None):
+    """
+    Returns a dictionary of file hashes mapped to a list of paths that have that hash (these paths are duplicate files).
+    :param include: The list of paths to include in the search.
+    :param exclude: The list of paths to exclude in the search.
+    :return: A dictionary mapping file hashes to the paths that have files with that hash.
+    """
     # Find the paths of all the files to check for duplicates.
     if isinstance(include, Path) or isinstance(include, str):  # One directory given
         paths = subpaths(include)
