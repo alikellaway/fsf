@@ -91,9 +91,9 @@ def get_duplicates(include: Path | Iterable[Path], exclude: Path | Iterable[Path
     """
     # Find the paths of all the files to check for duplicates.
     if isinstance(include, Path) or isinstance(include, str):  # One directory given
-        paths = subpaths(include)
+        paths = list(subpaths(include))
     elif isinstance(include, list):  # Multiple directories given
-        paths = (path for dir in include for path in subpaths(dir))
+        paths = [path for dir in include for path in subpaths(dir)]
     else:
         raise NotImplementedError
     # Find the paths of all the files to exclude from the search.
@@ -112,11 +112,11 @@ def get_duplicates(include: Path | Iterable[Path], exclude: Path | Iterable[Path
 
     hash_path_dict = {}  # A dictionary mapping file hash to the file path.
     for path in paths:
-        file_hash = hash_from_path(path)
-        if hash_path_dict.get(file_hash) is None:
-            hash_path_dict[file_hash] = [path]
-        else:
-            hash_path_dict.get(file_hash).append(path)
+        hash = hash_from_path(path)
+        try:
+            hash_path_dict[hash].append(path)
+        except KeyError:
+            hash_path_dict[hash] = [path]
 
     # Filter through to find the hashes with multiple paths mapped (these are dup files).
     return dict(filter(lambda kvp: True if len(kvp[1]) > 1 else False, hash_path_dict.items()))
