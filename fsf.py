@@ -2,7 +2,7 @@
 Module contains functions useful for interacting with and manipulating file systems and structures.
 """
 from hashlib import md5
-from os import scandir, path, remove as osrmv, chdir, mkdir, getcwd
+from os import scandir, path as ospath, remove as osrmv, chdir, mkdir, getcwd
 from random import randint
 from sys import path as syspath
 from pathlib import Path
@@ -114,11 +114,7 @@ def get_duplicates(include: Path | Iterable[Path], exclude: Path | Iterable[Path
             hash_path_dict.get(file_hash).append(path)
 
     # Filter through to find the hashes with multiple paths mapped (these are dup files).
-    return dict(filter(lambda kvp: True if len[kvp[1]] > 1 else False, hash_path_dict.items()))
-    # not_dups = [key for key in hash_path_dict.keys() if len(hash_path_dict[key]) <= 1]
-    # for key in not_dups:
-    #     del hash_path_dict[key]
-    # return hash_path_dict
+    return dict(filter(lambda kvp: True if len(kvp[1]) > 1 else False, hash_path_dict.items()))
 
 
 def remove(paths: Path | list[Path]) -> list[Path]:
@@ -158,6 +154,7 @@ def create_test_directory(depth, location=syspath[0], duplicate_percentage=25, m
     :param max_files: The maximum number of files that can be created on each level of the tree.
     :return:
     """
+    location = path_handler(location).resolve()
     if depth == 0:
         return
     chdir(location)
@@ -179,13 +176,13 @@ def create_test_directory(depth, location=syspath[0], duplicate_percentage=25, m
         file_name = "file_" + str(i) + ".txt"
         with open(file_name, 'w') as f:
             f.write(
-                f'This is a randomly generated unique file. Path hash: {hash(location + file_name)}')
+                f'This is a randomly generated unique file. Path hash: {hash(str(location) + file_name)}')
     # Do the same again for some of the directories we just created.
     for i in range(num_direc):
         # 50% of the subdirectories will have subdirectories.
         if randint(0, 1) == 1:
             create_test_directory(
-                depth - 1, location=path.join(location, f'dir_{i}'))
+                depth - 1, location = ospath.join(location, f'dir_{i}'))
 
 
 def path_handler(path: str | Path) -> Path:
