@@ -41,7 +41,7 @@ def hash_from_path(path: Path | str) -> str:
     :return: A string hash of the file at the path.
     """
     hasher = md5()
-    with open(path_handler(path).resovle(), 'rb') as f:
+    with open(path_handler(path).resolve(), 'rb') as f:
         buf = f.read()
         hasher.update(buf)
         return hasher.hexdigest()
@@ -83,75 +83,29 @@ def subpaths(directory: Path | str) -> list[Path]:
     return sf
 
 
-def get_duplicates(include: str | Path | Iterable[Path] | Iterable[str], exclude: str | Path | Iterable[Path] = None) -> Iterable[Path]:
-    """
-    Returns the paths of files that have equal content to another file in the directory. The first instance is not in
-    the output.
-    :param exclude: A list of directories or files to exclude from the search.
-    :param include: The directory or directories in which to start searching for duplicates.
-    :return: A list of paths of files that are duplicates of another files.
-    """
-    # Change logic depending on whether the input is a single path of a list of paths.
-    paths: Iterable[Path] = []
-    if isinstance(include, Path):
-        paths = subpaths(include)
-    elif isinstance(include, list):
-        for d in include:
-            paths += subpaths(d)
-    else:  # Not implemented
-        raise NotImplementedError
-    hashes = set()  # Use set to see if path is already seen
-    # List will store the paths of duplicate items (all the paths of each duplicate e.i. both photo 1 and photo 2)
-    duplicates = []
-    # Filter paths to exclude those in exclude list
-    if exclude is not None:
-        exc: Iterable[Path] = []
-        if isinstance(exclude, str):
-            exc.append(path_handler(exclude))
-        elif isinstance(exclude, Iterable):
-            exc += list(exclude)
-        else:
-            raise NotImplementedError
-        for path in paths:
-            for exclusion in exc:
-                if path.resolve().find(exclusion.resolve()):
-                    paths.remove(path)
-    # Now comb for duplicates
-    for path in paths:
-        size = len(hashes)
-        hashes.add(hash_from_path(path))
-        if size < len(hashes):
-            duplicates.append(path)
-    return duplicates
-
-
-def get_duplicates2(include: Path | Iterable[Path], exclude=None):
-    print(f'Searching for duplicate files in:\n\t{include}')
+def get_duplicates(include: Path | Iterable[Path], exclude: Path | Iterable[Path] = None):
+    # Find the paths of all the files to check for duplicates.
     if isinstance(include, Path) or isinstance(include, str):  # One directory given
         paths = subpaths(include)
     elif isinstance(include, list):  # Multiple directories given
-        paths = []
-        for d in include:
-            paths += subpaths(d)
+        paths = (path for dir in include for path in subpaths(dir))
     else:
         raise NotImplementedError
+    # Find the paths of all the files to exclude from the search.
     if exclude is not None:
-        print(f'Excluding directories and files under:')
-        exc = []
         if isinstance(exclude, str):
-            exc.append(exclude)
+            exc = subpaths(exclude)
         elif isinstance(exclude, list):
-            exc += exclude
+            exc = (path for dir in exclude for path in subpaths(dir))
         else:
             raise NotImplementedError
-        for path in exc:
-            print(f'\t{path}\n')
-        for path in paths:
-            for exclusion in exc:
-                if path.commonpath([path, exclusion]):
-                    paths.remove(path)
+        for exc_path in exc:  # Remove all the excluded paths.
+            try:
+                paths.remove(exc_path)
+            except ValueError:
+                continue
 
-    hash_path_dict = {}
+    hash_path_dict = {}  # A dictionary mapping file hash to the file path.
     for path in paths:
         file_hash = hash_from_path(path)
         if hash_path_dict.get(file_hash) is None:
@@ -160,16 +114,11 @@ def get_duplicates2(include: Path | Iterable[Path], exclude=None):
             hash_path_dict.get(file_hash).append(path)
 
     # Filter through to find the hashes with multiple paths mapped (these are dup files).
-    # rmv = []
-    # for key, value in hash_path_dict.items():
-    #     if not len(value) > 1:
-    #         rmv.append(key)
-    # for key in rmv:
+    return dict(filter(lambda kvp: True if len[kvp[1]] > 1 else False, hash_path_dict.items()))
+    # not_dups = [key for key in hash_path_dict.keys() if len(hash_path_dict[key]) <= 1]
+    # for key in not_dups:
     #     del hash_path_dict[key]
-    for key in hash_path_dict.keys():
-        if not len(hash_path_dict[key]) > 1:
-            del hash_path_dict[key]
-    return hash_path_dict
+    # return hash_path_dict
 
 
 def remove(paths: Path | list[Path]) -> list[Path]:
